@@ -1,0 +1,4 @@
+criterion,feature
+gain_ratio,outlook
+information_gain,outlook
+gini,outlook

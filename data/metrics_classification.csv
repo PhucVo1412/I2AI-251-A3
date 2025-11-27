@@ -1,0 +1,11 @@
+sample_id,y_true,y_pred
+1,cat,cat
+2,cat,dog
+3,dog,dog
+4,bird,bird
+5,bird,cat
+6,dog,dog
+7,cat,cat
+8,dog,cat
+9,bird,bird
+10,cat,cat
