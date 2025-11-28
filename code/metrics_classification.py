@@ -16,7 +16,7 @@ def _safe_divide(num: float, denom: float) -> float:
     Returns:
         float: num / denom when denom != 0, otherwise 0.0.
     """
-    if demo == 0:
+    if denom == 0:
         return 0.0
     return num / denom
 
@@ -35,9 +35,13 @@ def _prepare_inputs(y_true, y_pred) -> tuple[np.ndarray, np.ndarray]:
     Raises:
         ValueError: If the arrays do not share the same length.
     """
+    y_true_arr = np.array(y_true).ravel()
+    y_pred_arr = np.array(y_pred).ravel()
 
+    if len(y_true_arr) != len(y_pred_arr):
+        raise ValueError("Arrays do not share the same length")
     
-    raise NotImplementedError("Implement _prepare_inputs.")
+    return y_true_arr, y_pred_arr
 
 
 def _resolve_labels(labels, y_true_arr: np.ndarray, y_pred_arr: np.ndarray) -> list:
@@ -55,7 +59,13 @@ def _resolve_labels(labels, y_true_arr: np.ndarray, y_pred_arr: np.ndarray) -> l
     Raises:
         ValueError: If the final label list is empty.
     """
-    raise NotImplementedError("Implement _resolve_labels.")
+    if labels is None:
+        # Concatenate and find unique values (sorted automatically by unique)
+        return np.unique(np.concatenate((y_true_arr, y_pred_arr)))
+    
+    # If labels are provided, return them as a numpy array
+    return np.array(labels)
+
 
 
 def confusion_matrix(
@@ -83,7 +93,22 @@ def confusion_matrix(
         array([[1, 0],
                [1, 0]])
     """
-    raise NotImplementedError("Implement confusion_matrix.")
+    y_true_arr, y_pred_arr = _prepare_inputs(y_true, y_pred)
+
+    resolved_labels = _resolve_labels(labels, y_true_arr, y_pred_arr)
+
+    label= {label: i for i, label in enumerate(resolved_labels)}
+
+    n_labels = len(resolved_labels)
+    confusion_matrix1 = np.zeros((n_labels, n_labels), dtype=int)
+
+    for true_val, pred_val in zip(y_true_arr, y_pred_arr):
+        row_idx = label.get(true_val)
+        col_idx = label.get(pred_val)
+        if row_idx is not None and col_idx is not None:
+            confusion_matrix1[row_idx, col_idx] += 1
+            
+    return confusion_matrix1
 
 
 def accuracy_score(y_true, y_pred) -> float:
@@ -101,7 +126,12 @@ def accuracy_score(y_true, y_pred) -> float:
         >>> accuracy_score(["cat", "dog"], ["cat", "cat"])
         0.5
     """
-    raise NotImplementedError("Implement accuracy_score.")
+    matrix = confusion_matrix(y_true,y_pred,None)
+    correct = np.trace(matrix)
+
+    total = matrix.sum()
+
+    return _safe_divide(correct, total)
 
 
 def precision_score(y_true, y_pred, positive_label) -> float:
@@ -120,8 +150,22 @@ def precision_score(y_true, y_pred, positive_label) -> float:
         >>> precision_score(["cat", "dog"], ["cat", "cat"], positive_label="cat")
         0.5
     """
-    raise NotImplementedError("Implement precision_score.")
 
+    y_true_arr, y_pred_arr = _prepare_inputs(y_true, y_pred)
+    
+    labels_list = _resolve_labels(None, y_true_arr, y_pred_arr)
+    
+    try:
+        search_list = labels_list.tolist() if isinstance(labels_list, np.ndarray) else labels_list
+        index = search_list.index(positive_label)
+    except ValueError:
+        return 0.0
+
+    matrix = confusion_matrix(y_true_arr, y_pred_arr, labels=labels_list)
+    true_positive = matrix[index, index]
+    total_predicted_positive = matrix[:, index].sum()
+
+    return _safe_divide(true_positive, total_predicted_positive)
 
 def recall_score(y_true, y_pred, positive_label) -> float:
     """
@@ -139,8 +183,21 @@ def recall_score(y_true, y_pred, positive_label) -> float:
         >>> recall_score(["cat", "cat"], ["cat", "dog"], positive_label="cat")
         0.5
     """
-    raise NotImplementedError("Implement recall_score.")
+    y_true_arr, y_pred_arr = _prepare_inputs(y_true, y_pred)
+    labels_list = _resolve_labels(None, y_true_arr, y_pred_arr)
+    
+    try:
+        search_list = labels_list.tolist() if isinstance(labels_list, np.ndarray) else labels_list
+        index = search_list.index(positive_label)
+    except ValueError:
+        return 0.0
 
+    matrix = confusion_matrix(y_true_arr, y_pred_arr, labels=labels_list)
+    
+    true_positive = matrix[index, index]
+    total_actual_positive = matrix[index, :].sum()
+
+    return _safe_divide(true_positive, total_actual_positive)
 
 def f1_score(y_true, y_pred, positive_label) -> float:
     """
@@ -158,7 +215,11 @@ def f1_score(y_true, y_pred, positive_label) -> float:
         >>> f1_score(["cat", "dog"], ["cat", "cat"], positive_label="cat")
         0.6666666666666666
     """
-    raise NotImplementedError("Implement f1_score.")
+    p = precision_score(y_true, y_pred, positive_label)
+    r = recall_score(y_true, y_pred, positive_label)
+    
+
+    return _safe_divide(2 * p * r, p + r)
 
 
 def macro_f1_score(y_true, y_pred, labels) -> float:
@@ -178,7 +239,14 @@ def macro_f1_score(y_true, y_pred, labels) -> float:
         >>> macro_f1_score(["cat", "dog"], ["cat", "cat"], labels=["cat", "dog"])
         0.5
     """
-    raise NotImplementedError("Implement macro_f1_score.")
+    scores = []
+    for label in labels:
+        score = f1_score(y_true, y_pred, positive_label=label)
+        scores.append(score)
+
+    if not scores:
+        return 0.0
+    return sum(scores) / len(scores)
 
 
 def micro_f1_score(y_true, y_pred, labels) -> float:
@@ -197,5 +265,44 @@ def micro_f1_score(y_true, y_pred, labels) -> float:
         >>> micro_f1_score(["cat", "dog"], ["cat", "cat"], labels=["cat", "dog"])
         0.5
     """
-    raise NotImplementedError("Implement micro_f1_score.")
+    y_true_arr, y_pred_arr = _prepare_inputs(y_true, y_pred)
+    
+    # We need the full set of unique labels in the data to build the matrix
+    all_labels = _resolve_labels(None, y_true_arr, y_pred_arr)
+    matrix = confusion_matrix(y_true_arr, y_pred_arr, labels=all_labels)
+    
+    # Map labels to indices for quick lookup
+    label_to_index = {lbl: i for i, lbl in enumerate(all_labels)}
+    
+    total_tp = 0
+    total_fp = 0
+    total_fn = 0
+    
+    # [cite_start]2. Aggregate counts for the requested labels [cite: 173]
+    for label in labels:
+        if label in label_to_index:
+            idx = label_to_index[label]
+            
+            # TP: Diagonal value
+            tp = matrix[idx, idx]
+            
+            # FP: Column sum - TP
+            fp = matrix[:, idx].sum() - tp
+            
+            # FN: Row sum - TP
+            fn = matrix[idx, :].sum() - tp
+            
+            total_tp += tp
+            total_fp += fp
+            total_fn += fn
+
+    # 3. Compute Micro Metrics
+    # Micro Precision = Sum(TP) / (Sum(TP) + Sum(FP))
+    micro_precision = _safe_divide(total_tp, total_tp + total_fp)
+    
+    # Micro Recall = Sum(TP) / (Sum(TP) + Sum(FN))
+    micro_recall = _safe_divide(total_tp, total_tp + total_fn)
+    
+    # [cite_start]4. Return Harmonic Mean [cite: 175]
+    return _safe_divide(2 * micro_precision * micro_recall, micro_precision + micro_recall)
 
