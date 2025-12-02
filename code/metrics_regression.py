@@ -44,6 +44,10 @@ def mean_absolute_error(y_true, y_pred) -> float:
     """
     y_true, y_pred = _prepare_inputs(y_true,y_pred)
     n = len(y_true)
+
+    if n==0:
+        return 0.0
+    
     return 1/n * sum(abs(y_true - y_pred))
 
 
@@ -60,6 +64,10 @@ def mean_squared_error(y_true, y_pred) -> float:
     """
     y_true, y_pred = _prepare_inputs(y_true,y_pred)
     n = len(y_true)
+
+    if n==0:
+        return 0.0
+    
     return 1/n * sum((y_true - y_pred)**2)
 
 

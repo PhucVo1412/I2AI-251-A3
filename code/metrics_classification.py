@@ -95,6 +95,8 @@ def confusion_matrix(
     """
     y_true_arr, y_pred_arr = _prepare_inputs(y_true, y_pred)
 
+    if len(y_pred_arr) != len(y_true_arr):
+        raise ValueError("Not same length")
     resolved_labels = _resolve_labels(labels, y_true_arr, y_pred_arr)
 
     label= {label: i for i, label in enumerate(resolved_labels)}
@@ -127,6 +129,11 @@ def accuracy_score(y_true, y_pred) -> float:
         0.5
     """
     matrix = confusion_matrix(y_true,y_pred,None)
+
+    n = len(matrix)
+    if n == 0 :
+        return 0.0
+    
     correct = np.trace(matrix)
 
     total = matrix.sum()
